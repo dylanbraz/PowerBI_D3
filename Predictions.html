@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3.js Facies Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .bar { fill: steelblue; }
+        .axis-label { font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Facies Distribution</h2>
+    <svg id="barChart" width="600" height="400"></svg>
+    
+    <h2>Depth vs. GR (Gamma Ray)</h2>
+    <svg id="lineChart" width="600" height="400"></svg>
+    
+    <script>
+        // Fetch data from GitHub repository
+        async function fetchData() {
+            const url = "https://raw.githubusercontent.com/dylanbraz/PowerBI_D3/blob/main/Predictions.txt";
+            const response = await fetch(url);
+            const text = await response.text();
+            
+            const rows = text.split("\n").slice(1); // Skip header
+            const data = rows.map(row => {
+                const cols = row.split("\t"); // Assuming tab-separated values
+                return {
+                    Facies: +cols[0],
+                    Depth: +cols[1],
+                    GR: +cols[2]
+                };
+            });
+            createVisualizations(data);
+        }
+        
+        function createVisualizations(data) {
+            // Bar Chart: Facies Distribution
+            const faciesCounts = d3.rollup(data, v => v.length, d => d.Facies);
+            const barData = Array.from(faciesCounts, ([key, value]) => ({ Facies: key, Count: value }));
+            
+            const barSvg = d3.select("#barChart"),
+                  barMargin = { top: 20, right: 30, bottom: 40, left: 50 },
+                  barWidth = 600 - barMargin.left - barMargin.right,
+                  barHeight = 400 - barMargin.top - barMargin.bottom;
+            
+            const barX = d3.scaleBand().domain(barData.map(d => d.Facies)).range([0, barWidth]).padding(0.2);
+            const barY = d3.scaleLinear().domain([0, d3.max(barData, d => d.Count)]).nice().range([barHeight, 0]);
+            
+            const barG = barSvg.append("g").attr("transform", `translate(${barMargin.left},${barMargin.top})`);
+            barG.append("g").selectAll("rect").data(barData).enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => barX(d.Facies))
+                .attr("y", d => barY(d.Count))
+                .attr("width", barX.bandwidth())
+                .attr("height", d => barHeight - barY(d.Count));
+            barG.append("g").attr("transform", `translate(0,${barHeight})`).call(d3.axisBottom(barX));
+            barG.append("g").call(d3.axisLeft(barY));
+            
+            // Line Chart: Depth vs GR
+            const lineSvg = d3.select("#lineChart"),
+                  lineMargin = { top: 20, right: 30, bottom: 40, left: 50 },
+                  lineWidth = 600 - lineMargin.left - lineMargin.right,
+                  lineHeight = 400 - lineMargin.top - lineMargin.bottom;
+            
+            const lineX = d3.scaleLinear().domain(d3.extent(data, d => d.Depth)).range([0, lineWidth]);
+            const lineY = d3.scaleLinear().domain([0, d3.max(data, d => d.GR)]).nice().range([lineHeight, 0]);
+            
+            const line = d3.line().x(d => lineX(d.Depth)).y(d => lineY(d.GR)).curve(d3.curveMonotoneX);
+            
+            const lineG = lineSvg.append("g").attr("transform", `translate(${lineMargin.left},${lineMargin.top})`);
+            lineG.append("path").datum(data).attr("fill", "none").attr("stroke", "steelblue").attr("stroke-width", 2).attr("d", line);
+            lineG.append("g").attr("transform", `translate(0,${lineHeight})`).call(d3.axisBottom(lineX));
+            lineG.append("g").call(d3.axisLeft(lineY));
+        }
+        
+        // Fetch and visualize data when page loads
+        fetchData();
+    </script>
+</body>
+</html>
