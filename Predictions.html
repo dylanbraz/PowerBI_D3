@@ -26,7 +26,7 @@
             
             const rows = text.split("\n").slice(1); // Skip header
             const data = rows.map(row => {
-                const cols = row.split("\t"); // Assuming tab-separated values
+                const cols = row.split("\t").map(d => d.trim()); // Assuming tab-separated values
                 return {
                     Facies: +cols[0],
                     Depth: +cols[1],
